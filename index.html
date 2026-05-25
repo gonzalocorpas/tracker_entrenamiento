@@ -72,6 +72,14 @@ textarea{resize:vertical;min-height:60px}
 .prog-ej-list{max-height:160px;overflow-y:auto;border:1px solid #e8e8e8;border-radius:8px;margin-bottom:12px}
 .serie-detail{font-size:12px;color:#888;line-height:1.8}
 .serie-detail strong{color:#555}
+.timer-bar{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1px solid #e8e8e8;display:none}
+.timer-display{font-size:36px;font-weight:700;color:#1a1a1a;letter-spacing:2px;text-align:center;margin:6px 0}
+.timer-btns{display:flex;gap:8px;margin-top:10px}
+.timer-btns button{flex:1;padding:10px;font-size:13px;border-radius:8px;border:1px solid #ddd;cursor:pointer;font-weight:600}
+.btn-start{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.btn-pause{background:#fff8e1;color:#f57f17;border-color:#ffe082}
+.btn-reset{background:#ffeaea;color:#c62828;border-color:#ffcdd2}
+.timer-label{font-size:11px;color:#888;text-align:center;margin-top:4px}
 </style>
 </head>
 <body>
@@ -96,6 +104,18 @@ textarea{resize:vertical;min-height:60px}
     <select id="dia-sel" onchange="cargarDia()">
       <option value="">— Selecciona el día —</option>
     </select>
+  </div>
+  <div class="timer-bar" id="timer-bar">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <div style="font-size:12px;font-weight:600;color:#555">Duración de sesión</div>
+      <div class="badge bg-green" id="timer-estado">En curso</div>
+    </div>
+    <div class="timer-display" id="timer-display">00:00:00</div>
+    <div class="timer-btns">
+      <button class="btn-pause" id="btn-pausar" onclick="pausarTimer()">Pausar</button>
+      <button class="btn-reset" onclick="resetTimer()">Reiniciar</button>
+    </div>
+    <div class="timer-label" id="timer-label"></div>
   </div>
   <div id="ej-container"></div>
   <div id="sesion-footer" style="display:none">
@@ -226,6 +246,65 @@ function switchTab(t,btn){
   if(t==='editor'){renderDiasList();renderEditorDiaSel();renderEditorEj()}
 }
 
+let timerInterval=null;
+let timerSeconds=0;
+let timerRunning=false;
+let timerStartTime=null;
+
+function startTimer(){
+  timerRunning=true;
+  timerStartTime=Date.now()-timerSeconds*1000;
+  timerInterval=setInterval(()=>{
+    timerSeconds=Math.floor((Date.now()-timerStartTime)/1000);
+    updateTimerDisplay();
+  },1000);
+  document.getElementById('timer-estado').textContent='En curso';
+  document.getElementById('timer-estado').className='badge bg-green';
+  document.getElementById('btn-pausar').textContent='Pausar';
+  document.getElementById('btn-pausar').className='btn-pause';
+  document.getElementById('btn-pausar').onclick=pausarTimer;
+}
+
+function pausarTimer(){
+  clearInterval(timerInterval);
+  timerRunning=false;
+  document.getElementById('timer-estado').textContent='Pausado';
+  document.getElementById('timer-estado').className='badge bg-amber';
+  document.getElementById('btn-pausar').textContent='Reanudar';
+  document.getElementById('btn-pausar').className='btn-start';
+  document.getElementById('btn-pausar').onclick=startTimer;
+}
+
+function resetTimer(){
+  clearInterval(timerInterval);
+  timerRunning=false;
+  timerSeconds=0;
+  updateTimerDisplay();
+  document.getElementById('timer-estado').textContent='En curso';
+  document.getElementById('timer-estado').className='badge bg-green';
+  document.getElementById('btn-pausar').textContent='Pausar';
+  document.getElementById('btn-pausar').className='btn-pause';
+  document.getElementById('btn-pausar').onclick=pausarTimer;
+  startTimer();
+}
+
+function updateTimerDisplay(){
+  const h=Math.floor(timerSeconds/3600);
+  const m=Math.floor((timerSeconds%3600)/60);
+  const s=timerSeconds%60;
+  document.getElementById('timer-display').textContent=
+    String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function timerDuracionTexto(){
+  const h=Math.floor(timerSeconds/3600);
+  const m=Math.floor((timerSeconds%3600)/60);
+  const s=timerSeconds%60;
+  if(h>0)return h+'h '+m+'min';
+  if(m>0)return m+'min '+s+'s';
+  return s+'s';
+}
+
 function setFecha(){
   document.getElementById('fecha-hdr').textContent=new Date().toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
 }
@@ -253,38 +332,50 @@ function cargarDia(){
   });
   renderEjercicios();
   footer.style.display='block';
+  clearInterval(timerInterval);
+  timerSeconds=0;
+  timerRunning=false;
+  updateTimerDisplay();
+  document.getElementById('timer-bar').style.display='block';
+  startTimer();
 }
 
 function ejId(ej){return 'ejb-'+btoa(unescape(encodeURIComponent(ej))).replace(/[^a-zA-Z0-9]/g,'')}
 
 function renderEjercicios(){
-  document.getElementById('ej-container').innerHTML=Object.keys(ejState).map(ej=>buildEjBlock(ej)).join('');
+  _ejKeys=Object.keys(ejState);
+  document.getElementById('ej-container').innerHTML=_ejKeys.map(ej=>buildEjBlock(ej)).join('');
 }
+
+let _ejKeys=[];
+
+function ejIdx(ej){return _ejKeys.indexOf(ej)}
 
 function buildEjBlock(ej){
   const st=ejState[ej];
+  const idx=ejIdx(ej);
   const badgeHtml=st.skipped?'<span class="badge bg-gray">Saltado</span>':'<span class="badge bg-green">Activo</span>';
   const skipBtn=st.skipped
-    ?`<button class="btn-icon" onclick="toggleSkip(${JSON.stringify(ej)},false)">↩ Activar</button>`
-    :`<button class="btn-icon" onclick="toggleSkip(${JSON.stringify(ej)},true)">Saltar</button>`;
+    ?`<button class="btn-icon" onclick="toggleSkipIdx(${idx},false)">↩ Activar</button>`
+    :`<button class="btn-icon" onclick="toggleSkipIdx(${idx},true)">Saltar</button>`;
   const seriesHtml=st.skipped
     ?`<div style="font-size:12px;color:#aaa;margin:4px 0">Saltado hoy</div>`
     :st.series.map((s,i)=>`
       <div class="serie-row">
         <span class="serie-num">${i+1}</span>
         <span class="serie-lbl">kg</span>
-        <input type="number" inputmode="decimal" min="0" step="0.5" placeholder="0" value="${s.peso}" style="width:64px" onchange="updateSerie(${JSON.stringify(ej)},${i},'peso',this.value)">
+        <input type="number" inputmode="decimal" min="0" step="0.5" placeholder="0" value="${s.peso}" style="width:64px" onchange="updateSerieIdx(${idx},${i},'peso',this.value)">
         <span class="serie-lbl">reps</span>
-        <input type="number" inputmode="numeric" min="1" max="60" placeholder="0" value="${s.reps}" style="width:60px" onchange="updateSerie(${JSON.stringify(ej)},${i},'reps',this.value)">
-        <select class="serie-rir" onchange="updateSerie(${JSON.stringify(ej)},${i},'rir',this.value)">
+        <input type="number" inputmode="numeric" min="1" max="60" placeholder="0" value="${s.reps}" style="width:60px" onchange="updateSerieIdx(${idx},${i},'reps',this.value)">
+        <select class="serie-rir" onchange="updateSerieIdx(${idx},${i},'rir',this.value)">
           <option value="0" ${s.rir==='0'?'selected':''}>RIR 0</option>
           <option value="1" ${s.rir==='1'?'selected':''}>RIR 1</option>
           <option value="2" ${s.rir==='2'?'selected':''}>RIR 2</option>
           <option value="3" ${s.rir==='3'?'selected':''}>RIR 3</option>
         </select>
-        ${st.series.length>1?`<button class="btn-icon" onclick="quitarSerie(${JSON.stringify(ej)},${i})">✕</button>`:''}
+        ${st.series.length>1?`<button class="btn-icon" onclick="quitarSerieIdx(${idx},${i})">✕</button>`:''}
       </div>`).join('');
-  const addBtn=st.skipped?'':`<button class="btn btn-sm" style="width:100%;margin-top:6px" onclick="añadirSerie(${JSON.stringify(ej)})">+ Serie</button>`;
+  const addBtn=st.skipped?'':`<button class="btn btn-sm" style="width:100%;margin-top:6px" onclick="añadirSerieIdx(${idx})">+ Serie</button>`;
   return `<div class="ej-block ${st.skipped?'skipped':''}" id="${ejId(ej)}">
     <div class="ej-header">
       <div class="ej-name">${ej}</div>
@@ -298,6 +389,11 @@ function refreshEj(ej){
   const el=document.getElementById(ejId(ej));
   if(el)el.outerHTML=buildEjBlock(ej);
 }
+
+function toggleSkipIdx(idx,skip){toggleSkip(_ejKeys[idx],skip)}
+function updateSerieIdx(idx,i,campo,val){updateSerie(_ejKeys[idx],i,campo,val)}
+function añadirSerieIdx(idx){añadirSerie(_ejKeys[idx])}
+function quitarSerieIdx(idx,i){quitarSerie(_ejKeys[idx],i)}
 
 function updateSerie(ej,i,campo,val){if(ejState[ej]&&ejState[ej].series[i])ejState[ej].series[i][campo]=val}
 
@@ -335,7 +431,10 @@ function guardarSesion(){
     ejercicio:ej,skipped:st.skipped,skipReason:st.skipReason||'',
     series:st.series.filter(s=>s.peso||s.reps),rir:st.series[0]?.rir||'1'
   }));
-  data.sesiones.push({id:Date.now(),fecha:new Date().toISOString(),dia,ejercicios,nota:document.getElementById('nota-sesion').value,tags:[...currentTags]});
+  const duracion=timerDuracionTexto();
+  clearInterval(timerInterval);timerRunning=false;timerSeconds=0;
+  document.getElementById('timer-bar').style.display='none';
+  data.sesiones.push({id:Date.now(),fecha:new Date().toISOString(),dia,ejercicios,nota:document.getElementById('nota-sesion').value,tags:[...currentTags],duracion});
   save();
   currentTags=[];ejState={};
   document.getElementById('dia-sel').value='';
@@ -351,21 +450,32 @@ function renderHistorial(){
   if(!data.sesiones.length){el.innerHTML='<div class="no-data">Aún no hay sesiones</div>';return}
   el.innerHTML=[...data.sesiones].reverse().map(s=>{
     const fecha=new Date(s.fecha).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
-    const tags=s.tags.map(t=>`<span class="tag ${TAG_COLORS[t]||'bg-blue'}">${t}</span>`).join('');
-    const activos=s.ejercicios.filter(e=>!e.skipped&&e.series&&e.series.length);
-    const saltados=s.ejercicios.filter(e=>e.skipped);
-    const resumen=activos.map(e=>{
-      const seriesStr=e.series.map((sr,i)=>`<span style="margin-right:8px">S${i+1}: <strong>${parseFloat(sr.peso)||0}kg</strong> × ${parseInt(sr.reps)||0} <span style="color:#bbb">(R${sr.rir||'?'})</span></span>`).join('');
-      return `<div style="margin-bottom:6px"><div style="font-size:12px;font-weight:600;color:#555;margin-bottom:2px">${e.ejercicio}</div><div style="font-size:12px;color:#888;line-height:1.8">${seriesStr}</div></div>`;
-    }).join('');
+    const tags=(s.tags||[]).map(t=>`<span class="tag ${TAG_COLORS[t]||'bg-blue'}">${t}</span>`).join('');
+    const ejercicios=s.ejercicios||[];
+    const activos=ejercicios.filter(e=>!e.skipped&&e.series&&e.series.length>0);
+    const saltados=ejercicios.filter(e=>e.skipped);
+    const resumen=activos.length?activos.map(e=>{
+      const series=e.series||[];
+      const seriesStr=series.map((sr,i)=>{
+        const p=parseFloat(sr.peso)||0;
+        const r=parseInt(sr.reps)||0;
+        const rir=sr.rir||'?';
+        return `<span style="display:inline-block;margin-right:10px;margin-bottom:2px">S${i+1}: <strong>${p}kg</strong> × ${r} <span style="color:#bbb">(R${rir})</span></span>`;
+      }).join('');
+      return `<div style="margin-bottom:8px">
+        <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:3px">${e.ejercicio}</div>
+        <div style="font-size:12px;color:#888;line-height:2">${seriesStr||'Sin datos de series'}</div>
+      </div>`;
+    }).join(''):'<div style="font-size:12px;color:#aaa">Sin ejercicios registrados</div>';
     return `<div class="hist-item">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font-weight:700;font-size:14px">${s.dia}</span>
         <span style="font-size:12px;color:#aaa">${fecha}</span>
       </div>
-      <div style="margin-bottom:8px">${tags}</div>
+      ${tags?`<div style="margin-bottom:8px">${tags}</div>`:''}
       ${resumen}
       ${saltados.length?`<div style="font-size:12px;color:#aaa;margin-top:4px">Saltados: ${saltados.map(e=>e.ejercicio).join(', ')}</div>`:''}
+      ${s.duracion?`<div style="font-size:11px;color:#aaa;margin-top:4px">Duración: ${s.duracion}</div>`:''}
       ${s.nota?`<div style="font-size:12px;color:#888;font-style:italic;margin-top:6px;padding-top:6px;border-top:1px solid #f0f0f0">"${s.nota}"</div>`:''}
     </div>`;
   }).join('');
@@ -378,11 +488,13 @@ function todosLosEjercicios(){
   return Array.from(set).sort((a,b)=>a.localeCompare(b));
 }
 
+let _progList=[];
+
 function renderProgEjList(filtro){
-  const lista=todosLosEjercicios().filter(e=>e.toLowerCase().includes(filtro.toLowerCase()));
+  _progList=todosLosEjercicios().filter(e=>e.toLowerCase().includes(filtro.toLowerCase()));
   const el=document.getElementById('prog-ej-list');
-  if(!lista.length){el.innerHTML='<div class="no-data" style="padding:12px">Sin resultados</div>';return}
-  el.innerHTML=lista.map(e=>`<div class="prog-ej-item ${selectedProgEj===e?'active-ej':''}" onclick="selectProgEj(${JSON.stringify(e)})">${e}</div>`).join('');
+  if(!_progList.length){el.innerHTML='<div class="no-data" style="padding:12px">Sin resultados</div>';return}
+  el.innerHTML=_progList.map((e,i)=>`<div class="prog-ej-item ${selectedProgEj===e?'active-ej':''}" onclick="selectProgEjIdx(${i})">${e}</div>`).join('');
 }
 
 function buscarEjProg(){
@@ -390,10 +502,10 @@ function buscarEjProg(){
   renderProgEjList(q);
 }
 
-function selectProgEj(ej){
-  selectedProgEj=ej;
-  document.getElementById('prog-search').value=ej;
-  renderProgEjList(ej);
+function selectProgEjIdx(i){
+  selectedProgEj=_progList[i];
+  document.getElementById('prog-search').value=selectedProgEj;
+  renderProgEjList(selectedProgEj);
   renderProg();
 }
 
