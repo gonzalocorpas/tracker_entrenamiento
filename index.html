@@ -338,9 +338,8 @@ function renderHistorial(){
     const activos=s.ejercicios.filter(e=>!e.skipped&&e.series&&e.series.length);
     const saltados=s.ejercicios.filter(e=>e.skipped);
     const resumen=activos.map(e=>{
-      const maxP=Math.max(...e.series.map(sr=>parseFloat(sr.peso)||0));
-      const maxR=Math.max(...e.series.map(sr=>parseInt(sr.reps)||0));
-      return `<div style="font-size:12px;color:#888">${e.ejercicio}: <strong>${maxP}kg</strong> × ${maxR} (${e.series.length} series)</div>`;
+      const seriesStr=e.series.map((sr,i)=>`S${i+1}: ${parseFloat(sr.peso)||0}kg × ${parseInt(sr.reps)||0}`).join(' · ');
+      return `<div style="font-size:12px;color:#888;margin-bottom:3px"><span style="font-weight:600;color:#555">${e.ejercicio}</span><br>${seriesStr} <span style="color:#bbb">(RIR ${e.series[0]?.rir||'?'})</span></div>`;
     }).join('');
     return `<div class="hist-item">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
