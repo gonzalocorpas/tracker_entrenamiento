@@ -445,25 +445,28 @@ function renderDiasList(){
   const el=document.getElementById('dias-list');
   el.innerHTML=Object.keys(data.dias).map((d,i)=>`
     <div class="dia-row">
-      <input type="text" value="${d}" onchange="editarDia(${i},this.value,${JSON.stringify(d)})" style="flex:1;font-size:13px">
-      <button class="btn btn-icon btn-danger" onclick="eliminarDia(${JSON.stringify(d)})">✕</button>
+      <input type="text" value="${d.replace(/"/g,'&quot;')}" onchange="editarDia(${i},this.value)" style="flex:1;font-size:13px">
+      <button class="btn btn-icon btn-danger" onclick="eliminarDiaIdx(${i})">✕</button>
     </div>`).join('');
 }
 
-function editarDia(i,nuevoNombre,nombreAnterior){
-  if(!nuevoNombre.trim()||nuevoNombre===nombreAnterior)return;
-  const ejs=data.dias[nombreAnterior];
+function editarDia(i,nuevoNombre){
   const keys=Object.keys(data.dias);
+  const nombreAnterior=keys[i];
+  if(!nuevoNombre.trim()||nuevoNombre===nombreAnterior)return;
   const newDias={};
   keys.forEach(k=>{newDias[k===nombreAnterior?nuevoNombre:k]=data.dias[k]});
   data.dias=newDias;
   save();
   populateDiaSel();
   renderEditorDiaSel();
+  renderDiasList();
 }
 
-function eliminarDia(dia){
-  if(!confirm('¿Eliminar este día? Los ejercicios de este día no se podrán registrar pero el historial se conserva.'))return;
+function eliminarDiaIdx(i){
+  const keys=Object.keys(data.dias);
+  const dia=keys[i];
+  if(!confirm('¿Eliminar este día? El historial de sesiones se conserva.'))return;
   delete data.dias[dia];
   save();
   renderDiasList();
@@ -498,16 +501,21 @@ function renderEditorEj(){
   if(!dia||!data.dias[dia]){list.innerHTML='';return}
   list.innerHTML=(data.dias[dia]||[]).map((ej,i)=>`
     <div class="editor-row">
-      <input type="text" value="${ej}" onchange="editarEjercicio(${JSON.stringify(dia)},${i},this.value)" style="flex:1;font-size:13px">
-      <button class="btn btn-icon btn-danger" onclick="eliminarEjercicio(${JSON.stringify(dia)},${i})">✕</button>
+      <input type="text" value="${ej.replace(/"/g,'&quot;')}" onchange="editarEjercicioIdx(${i},this.value)" style="flex:1;font-size:13px">
+      <button class="btn btn-icon btn-danger" onclick="eliminarEjercicioIdx(${i})">✕</button>
     </div>`).join('');
 }
 
-function editarEjercicio(dia,i,val){data.dias[dia][i]=val;save()}
+function editarEjercicioIdx(i,val){
+  const dia=document.getElementById('editor-dia').value;
+  if(data.dias[dia])data.dias[dia][i]=val;
+  save();
+}
 
-function eliminarEjercicio(dia,i){
-  if(!confirm('¿Eliminar ejercicio? El historial de este ejercicio se conserva.'))return;
-  data.dias[dia].splice(i,1);
+function eliminarEjercicioIdx(i){
+  const dia=document.getElementById('editor-dia').value;
+  if(!confirm('¿Eliminar ejercicio? El historial se conserva.'))return;
+  if(data.dias[dia])data.dias[dia].splice(i,1);
   save();
   renderEditorEj();
 }
