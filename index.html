@@ -458,7 +458,7 @@ function saveSession() {
     return {
       ejercicio: ej,
       skip: st.skip,
-      series: st.series.filter(function(s) { return s.p || s.r; })
+      series: st.series.filter(function(s) { return s.p || s.r; }).map(function(s) { return {p: String(s.p||'').replace(',','.'), r: s.r, rir: s.rir}; })
     };
   });
   D.sesiones.push({
@@ -499,7 +499,7 @@ function renderHist() {
         res += '<div style="font-size:12px;font-weight:600;color:#444;margin-bottom:3px">' + e.ejercicio + '</div>';
         res += '<div style="font-size:12px;color:#888;line-height:2">';
         (e.series||[]).forEach(function(sr, i) {
-          var peso = parseFloat(sr.p || sr.peso) || 0;
+          var peso = parseFloat((String(sr.p || sr.peso || '0')).replace(',','.')) || 0;
           var reps = parseInt(sr.r || sr.reps) || 0;
           var rir = sr.rir || '?';
           res += '<span style="display:inline-block;margin-right:10px">S' + (i+1) + ': <strong>' + peso + 'kg</strong> x ' + reps + ' <span style="color:#bbb">(R' + rir + ')</span></span>';
@@ -563,7 +563,7 @@ function drawProg() {
       if (e.ejercicio === PSEL && !e.skip && e.series && e.series.length) {
         var maxP = 0, maxR = 0;
         e.series.forEach(function(sr) {
-          var p = parseFloat(sr.p || sr.peso) || 0;
+          var p = parseFloat((String(sr.p || sr.peso || '0')).replace(',','.')) || 0;
           var r = parseInt(sr.r || sr.reps) || 0;
           if (p > maxP) maxP = p;
           if (r > maxR) maxR = r;
@@ -605,7 +605,7 @@ function renderStats() {
     s.forEach(function(ses) {
       (ses.ejercicios||[]).forEach(function(ej) {
         (ej.series||[]).forEach(function(sr) {
-          vol += (parseFloat(sr.p||sr.peso)||0) * (parseInt(sr.r||sr.reps)||0);
+          vol += (parseFloat((String(sr.p||sr.peso||'0')).replace(',','.'))||0) * (parseInt(sr.r||sr.reps)||0);
         });
       });
     });
@@ -750,7 +750,7 @@ function doCSV() {
     } else {
       activos.forEach(function(ej) {
         (ej.series||[]).forEach(function(sr,i) {
-          rows.push([fecha,s.dia,ej.ejercicio,i+1,parseFloat(sr.p||sr.peso)||0,parseInt(sr.r||sr.reps)||0,sr.rir||'',tags,nota,dur]);
+          rows.push([fecha,s.dia,ej.ejercicio,i+1,parseFloat((String(sr.p||sr.peso||'0')).replace(',','.'))||0,parseInt(sr.r||sr.reps)||0,sr.rir||'',tags,nota,dur]);
         });
       });
     }
