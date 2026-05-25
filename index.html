@@ -387,7 +387,7 @@ function buildEjBlock(ej, idx) {
       return '<div class="sr">'
         + '<span class="sn">' + (si+1) + '</span>'
         + '<span class="sl">kg</span>'
-        + '<input type="number" inputmode="decimal" min="0" step="0.5" placeholder="0" value="' + s.p + '" style="width:64px" onchange="updSerie(' + idx + ',' + si + ',\'p\',this.value)">'
+        + '<input type="text" inputmode="decimal" placeholder="0" value="' + s.p + '" style="width:64px" onchange="updSerie(' + idx + ',' + si + ',\'p\',this.value)">'
         + '<span class="sl">reps</span>'
         + '<input type="number" inputmode="numeric" min="1" max="60" placeholder="0" value="' + s.r + '" style="width:58px" onchange="updSerie(' + idx + ',' + si + ',\'r\',this.value)">'
         + '<select class="srir" onchange="updSerie(' + idx + ',' + si + ',\'rir\',this.value)">'
